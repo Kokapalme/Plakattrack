@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlakatTrack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
+  :root {
+    --bg:#0f0f0f;--surface:#1a1a1a;--border:#2a2a2a;
+    --accent:#e8ff00;--accent2:#ff6b35;--text:#f0f0f0;
+    --muted:#666;--success:#00ff88;--danger:#ff3b3b;--warn:#ffcc00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;}
+  header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+  .logo span{color:var(--accent);}
+  .page{display:none;padding:24px;}
+  .page.active{display:block;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-bottom:20px;}
+  .card h2{font-family:'Syne',sans-serif;font-size:18px;margin-bottom:18px;}
+  .card h3{font-family:'Syne',sans-serif;font-size:14px;margin-bottom:12px;color:var(--accent);}
+  .field-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+  input[type=text],input[type=number],input[type=password],select,textarea{
+    width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;
+    padding:10px 12px;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;
+    margin-bottom:14px;outline:none;transition:border-color .15s;resize:vertical;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+  .btn{padding:10px 20px;background:var(--accent);color:#000;border:none;border-radius:4px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+  .btn:hover{opacity:.85;}
+  .btn.full{width:100%;padding:12px;font-size:15px;}
+  .btn.danger{background:var(--danger);color:#fff;}
+  .btn.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border);font-family:'DM Mono',monospace;font-weight:400;font-size:13px;}
+  .btn.success-btn{background:var(--success);color:#000;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .msg{border-radius:6px;padding:14px;font-size:13px;margin-top:14px;display:none;line-height:1.8;}
+  .msg.success{background:rgba(0,255,136,.08);border:1px solid var(--success);color:var(--success);}
+  .msg.error{background:rgba(255,59,59,.08);border:1px solid var(--danger);color:var(--danger);}
+  .msg.warn{background:rgba(255,204,0,.08);border:1px solid var(--warn);color:var(--warn);}
+  .admin-link{font-size:11px;color:var(--muted);text-align:center;margin-top:18px;}
+  .admin-link a{color:var(--muted);cursor:pointer;text-decoration:underline;}
+  .logout-btn{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;}
+  .drop-zone{border:2px dashed var(--border);border-radius:6px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px;position:relative;}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(232,255,0,.04);}
+  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .drop-zone .dz-icon{font-size:28px;margin-bottom:6px;}
+  .drop-zone p{font-size:13px;color:var(--muted);}
+  .foto-counter{font-size:12px;color:var(--accent);margin-top:4px;}
+
+  .foto-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .foto-thumb{position:relative;width:64px;height:64px;}
+  .foto-thumb img{width:64px;height:64px;object-fit:cover;border-radius:4px;}
+  .foto-thumb .remove{position:absolute;top:-5px;right:-5px;background:var(--danger);color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .foto-thumb .warn-dot{position:absolute;bottom:-4px;left:-4px;background:var(--warn);border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;}
+  .admin-wrap{max-width:960px;margin:0 auto;}
+  .event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
+  .event-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;}
+  .event-card .ename{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;}
+  .erow{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;}
+  .erow .el{color:var(--muted);}
+  .erow .ev.s{color:var(--success);}
+  .erow .ev.d{color:var(--danger);}
+  .eprogress{background:var(--border);border-radius:20px;height:5px;margin:10px 0 14px;}
+  .eprogress-bar{height:5px;border-radius:20px;background:var(--accent);}
+  .eactions{display:flex;gap:6px;}
+  .eactions button{flex:1;padding:5px;font-size:11px;font-family:'DM Mono',monospace;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);transition:all .15s;}
+  .eactions button:hover{border-color:var(--accent);color:var(--accent);}
+  .eactions button.del:hover{border-color:var(--danger);color:var(--danger);}
+  .inline-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+  .inline-row>div{flex:1;min-width:150px;}
+  .inline-row input{margin-bottom:0;}
+  .inline-row .btn{margin-bottom:0;white-space:nowrap;}
+  .section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .badge{font-family:'DM Mono',monospace;font-size:11px;background:var(--border);padding:2px 8px;border-radius:20px;color:var(--muted);}
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .toolbar .section-title{margin:0;flex:1;}
+  .export-btn{padding:7px 14px;background:var(--surface);color:var(--success);border:1px solid var(--success);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .empty-state{text-align:center;padding:32px;color:var(--muted);font-size:13px;}
+  .tag{background:rgba(232,255,0,.1);color:var(--accent);border-radius:3px;padding:2px 8px;font-size:11px;}
+  .warn-tag{background:rgba(255,204,0,.1);color:var(--warn);border-radius:3px;padding:2px 6px;font-size:11px;margin-left:4px;}
+  .thumb{width:34px;height:34px;object-fit:cover;border-radius:3px;cursor:pointer;margin-right:3px;}
+  .act-btn{padding:4px 10px;font-size:11px;font-family:'DM Mono',monospace;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:4px;}
+  .act-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .act-btn.del:hover{border-color:var(--danger);color:var(--danger);}
+  .ma-row{display:flex;align-items:center;gap:8px;}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0;}
+  .paid-badge{background:rgba(0,255,136,.1);color:var(--success);border-radius:3px;padding:2px 8px;font-size:11px;}
+  .unpaid-badge{background:rgba(255,59,59,.1);color:var(--danger);border-radius:3px;padding:2px 8px;font-size:11px;}
+
+  /* MODALS */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;align-items:center;justify-content:center;padding:16px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;position:relative;}
+  .modal h3{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:16px;}
+  .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+
+  /* GALERIE */
+  .gallery-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:300;flex-direction:column;align-items:center;justify-content:center;}
+  .gallery-overlay.open{display:flex;}
+  .gallery-img{max-width:90vw;max-height:75vh;border-radius:6px;object-fit:contain;}
+  .gallery-nav{display:flex;align-items:center;gap:24px;margin-top:16px;}
+  .gallery-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:4px;cursor:pointer;font-size:18px;font-family:'DM Mono',monospace;}
+  .gallery-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .gallery-info{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;}
+  .gallery-meta{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.8;}
+  .gallery-warn{font-size:11px;color:var(--warn);margin-top:4px;text-align:center;}
+  .gallery-close{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;}
+
+  .gps-link{font-size:11px;color:var(--accent);text-decoration:none;}
+  .gps-link:hover{text-decoration:underline;}
+
+  .progress-upload{background:var(--border);border-radius:4px;height:4px;margin-bottom:14px;display:none;}
+  .progress-upload-bar{height:4px;border-radius:4px;background:var(--accent);transition:width .3s;}
+
+  /* ===== UPLOAD PAGE REDESIGN ===== */
+  #main-header { display: none; }
+  #page-upload { min-height: 100vh; }
+
+  .upload-hero {
+    position: relative;
+    overflow: hidden;
+    background: #0a0a0a;
+    padding: 56px 24px 48px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-glow {
+    position: absolute;
+    top: -80px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 300px;
+    background: radial-gradient(ellipse, rgba(232,255,0,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 8vw, 56px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    color: var(--text);
+    position: relative;
+  }
+  .hero-logo span { color: var(--accent); }
+  .hero-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    position: relative;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 28px;
+    position: relative;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .hero-stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+  .upload-form-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 16px 48px;
+  }
+  .upload-form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .form-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+  .form-select {
+    border-radius: 6px !important;
+  }
+  .upload-submit-btn {
+    border-radius: 6px !important;
+    font-size: 16px !important;
+    padding: 14px !important;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .drop-zone {
+    border-radius: 8px !important;
+    background: var(--bg);
+  }
+</style>
+</head>
+<body>
+
+<header id="main-header">
+  <div class="logo">PLAKAT<span>TRACK</span></div>
+  <button class="logout-btn" id="logout-btn" onclick="logout()" style="display:none">Abmelden</button>
+</header>
+
+<!-- UPLOAD -->
+<div class="page active" id="page-upload" style="padding:0;">
+  <!-- HERO -->
+  <div class="upload-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div class="hero-logo">PLAKAT<span>TRACK</span></div>
+      <div class="hero-sub">Dein Plakatier-Manager</div>
+      <div class="hero-stats" id="hero-stats"></div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="upload-form-wrap">
+    <div class="upload-form-card">
+      <div class="form-title">Plakat einreichen</div>
+
+      <label class="field-label">Mitarbeiter</label>
+      <select id="ma-name" class="form-select"><option value="">— Bitte wählen —</option></select>
+
+      <label class="field-label">Veranstaltung</label>
+      <select id="ma-event" class="form-select"><option value="">— Bitte wählen —</option></select>
+
+      <label class="field-label">Fotos <span style="color:var(--muted);font-weight:400">— 1 Foto = 1 Plakat</span></label>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/*" multiple>
+        <div class="dz-icon">📷</div>
+        <p>Fotos auswählen oder hier ablegen</p>
+        <div class="foto-counter" id="foto-counter"></div>
+      </div>
+      <div class="processing" id="processing"></div>
+      <div class="progress-upload" id="progress-wrap"><div class="progress-upload-bar" id="progress-bar"></div></div>
+      <div class="foto-grid" id="foto-grid"></div>
+
+      <button class="btn full upload-submit-btn" id="submit-btn" onclick="submitEintrag()">
+        <span>Einreichen</span>
+      </button>
+      <div class="msg success" id="upload-success"></div>
+      <div class="msg error" id="upload-error"></div>
+      <div class="admin-link"><a onclick="showAdminLogin()">Admin-Bereich</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="page" id="page-login">
+  <div class="card" style="max-width:480px;margin:0 auto">
+    <h2>Admin-Login</h2>
+    <label class="field-label">Passwort</label>
+    <input type="password" id="pw-input" placeholder="Passwort" onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="btn full" onclick="checkPw()">Einloggen</button>
+    <div class="msg error" id="login-error" style="display:none">❌ Falsches Passwort.</div>
+    <div class="admin-link"><a onclick="showPage('upload')">← Zurück</a></div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="page" id="page-admin">
+  <div class="admin-wrap">
+
+    <div class="section-title">Events <span class="badge" id="event-count">0</span></div>
+    <div class="event-grid" id="event-grid"><div class="empty-state" style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:8px;">Lädt...</div></div>
+
+    <div class="toolbar">
+      <div class="section-title">Einreichungen <span class="badge" id="entry-count">0</span></div>
+      <button class="export-btn" onclick="exportExcel()">⬇ Excel</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mitarbeiter</th><th>Veranstaltung</th><th>Plakate</th><th>Fotos</th><th>Warnungen</th><th>Uhrzeit</th><th></th></tr></thead>
+        <tbody id="entries-table"><tr><td colspan="7"><div class="empty-state">Lädt...</div></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">Pro Mitarbeiter <span class="badge" id="ma-stat-count">0</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mitarbeiter</th><th>Plakate gesamt</th><th>Status</th><th>Bezahlt</th><th>Aktionen</th></tr></thead>
+        <tbody id="ma-table"></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>Neues Event anlegen</h3>
+      <div class="inline-row">
+        <div><label class="field-label">Veranstaltungsname</label><input type="text" id="new-event-name" placeholder="z.B. Stadtfest 16.05.2026"></div>
+        <div style="max-width:150px"><label class="field-label">Anfangsbestand</label><input type="number" id="new-event-bestand" min="1" placeholder="z.B. 200"></div>
+        <button class="btn" onclick="addEvent()">+ Anlegen</button>
+      </div>
+      <div class="msg error" id="event-error"></div>
+    </div>
+
+    <div class="card">
+      <h3>Mitarbeiter verwalten</h3>
+      <div class="inline-row">
+        <div><label class="field-label">Name</label><input type="text" id="new-ma-name" placeholder="z.B. Max Müller" onkeydown="if(event.key==='Enter')addMitarbeiter()"></div>
+        <button class="btn" onclick="addMitarbeiter()">+ Hinzufügen</button>
+      </div>
+      <div id="ma-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+
+    <button class="btn danger" onclick="resetData()" style="margin-top:8px;font-size:12px;padding:8px 16px;">⚠ Alle Daten löschen</button>
+  </div>
+</div>
+
+<!-- GALERIE -->
+<div class="gallery-overlay" id="gallery">
+  <button class="gallery-close" onclick="closeGallery()">✕</button>
+  <img class="gallery-img" id="gallery-img" src="" alt="">
+  <div class="gallery-info" id="gallery-info"></div>
+  <div class="gallery-meta" id="gallery-meta"></div>
+  <div class="gallery-warn" id="gallery-warn"></div>
+  <div class="gallery-nav">
+    <button class="gallery-btn" onclick="galleryPrev()">← Zurück</button>
+    <span id="gallery-counter" style="font-size:12px;color:var(--muted)"></span>
+    <button class="gallery-btn" onclick="galleryNext()">Weiter →</button>
+  </div>
+</div>
+
+<!-- MODAL Mitarbeiter -->
+<div class="modal-overlay" id="modal-ma">
+  <div class="modal" style="max-width:700px">
+    <button class="modal-close" onclick="closeModal('ma')">✕</button>
+    <h3 id="modal-ma-title"></h3>
+    <div id="modal-ma-content"></div>
+  </div>
+</div>
+
+<!-- MODAL Eintrag bearbeiten -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit')">✕</button>
+    <h3>Eintrag bearbeiten</h3>
+    <label class="field-label">Mitarbeiter</label><select id="edit-ma"></select>
+    <label class="field-label">Veranstaltung</label><select id="edit-event"></select>
+    <div class="modal-actions">
+      <button class="btn" onclick="saveEdit()" style="flex:1">Speichern</button>
+      <button class="btn secondary" onclick="closeModal('edit')" style="flex:1">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Event bearbeiten -->
+<div class="modal-overlay" id="modal-event-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('event-edit')">✕</button>
+    <h3>Event bearbeiten</h3>
+    <label class="field-label">Name</label><input type="text" id="edit-event-name">
+    <label class="field-label">Anfangsbestand</label><input type="number" id="edit-event-bestand" min="1">
+    <div class="modal-actions">
+      <button class="btn" onclick="saveEventEdit()" style="flex:1">Speichern</button>
+      <button class="btn secondary" onclick="closeModal('event-edit')" style="flex:1">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Auszahlung -->
+<div class="modal-overlay" id="modal-zahlung">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('zahlung')">✕</button>
+    <h3 id="zahlung-title">Auszahlung</h3>
+    <div id="zahlung-info" style="font-size:13px;color:var(--muted);margin-bottom:16px;"></div>
+    <label class="field-label">Betrag (€)</label>
+    <input type="number" id="zahlung-betrag" min="0" step="0.01" placeholder="z.B. 25.00">
+    <label class="field-label">Notiz (optional)</label>
+    <textarea id="zahlung-notiz" rows="2" placeholder="z.B. Stadtfest abgerechnet"></textarea>
+    <div class="modal-actions">
+      <button class="btn success-btn" onclick="saveZahlung()" style="flex:1">✓ Als bezahlt markieren</button>
+      <button class="btn secondary" onclick="closeModal('zahlung')" style="flex:1">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ADMIN_PW = 'Hallo123';
+const SB_URL = 'https://gzemnupesqqjbshakzkb.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6ZW1udXBlc3FxamJzaGFremtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NDc5MzUsImV4cCI6MjA5NDAyMzkzNX0.NchnuzBZapvVMVUsVzDDgLhyxrIR27mYrrKitaut09A';
+const BUCKET = 'Fotos';
+
+let events=[], mitarbeiter=[], entries=[], zahlungen=[];
+let pendingPhotos=[]; // {blob, previewUrl, gps, timestamp, hash}
+let processingCount=0;
+let editEntryId=null, editEventId=null, zahlungMa=null;
+let galleryPhotos=[], galleryIdx=0;
+
+// --- API ---
+async function db(path, method='GET', body=null) {
+  const opts={method,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':method==='POST'?'return=representation':''}};
+  if(body) opts.body=JSON.stringify(body);
+  const res=await fetch(SB_URL+'/rest/v1/'+path,opts);
+  if(method==='DELETE'||method==='PATCH') return res.ok;
+  return res.json();
+}
+
+async function uploadFoto(blob, filename) {
+  try {
+    // Try both bucket name casings
+    for (const bucket of ['Fotos', 'fotos']) {
+      const res = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${filename}`, {
+        method: 'POST',
+        headers: {'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'image/jpeg'},
+        body: blob
+      });
+      if (res.ok) return `${SB_URL}/storage/v1/object/public/${bucket}/${filename}`;
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+async function deleteFotoStorage(url) {
+  const path = url.split('/object/public/'+BUCKET+'/')[1];
+  if (!path) return;
+  await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${path}`, {
+    method: 'DELETE',
+    headers: {'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY}
+  });
+}
+
+// --- NAV ---
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('logout-btn').style.display=p==='admin'?'block':'none';
+}
+function showAdminLogin(){showPage('login');}
+function checkPw(){
+  if(document.getElementById('pw-input').value===ADMIN_PW){
+    document.getElementById('login-error').style.display='none';
+    document.getElementById('pw-input').value='';
+    loadAdmin(); showPage('admin');
+  } else { document.getElementById('login-error').style.display='block'; }
+}
+function logout(){showPage('upload');}
+
+// --- DROPDOWNS ---
+async function loadUploadDropdowns(){
+  events=await db('events?select=*&order=created_at.asc')||[];
+  mitarbeiter=await db('mitarbeiter?select=*&order=name.asc')||[];
+  document.getElementById('ma-name').innerHTML='<option value="">— Bitte wählen —</option>'+mitarbeiter.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
+  document.getElementById('ma-event').innerHTML='<option value="">— Bitte wählen —</option>'+events.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  // Update hero stats
+  const allEntries=await db('einreichungen?select=anzahl')||[];
+  const totalPlakate=allEntries.reduce((s,e)=>s+e.anzahl,0);
+  const statsEl=document.getElementById('hero-stats');
+  if(statsEl&&events.length>0){
+    statsEl.innerHTML=`
+      <div class="hero-stat"><div class="hero-stat-val">${events.length}</div><div class="hero-stat-label">Events</div></div>
+      <div class="hero-stat"><div class="hero-stat-val">${totalPlakate}</div><div class="hero-stat-label">Plakate</div></div>
+      <div class="hero-stat"><div class="hero-stat-val">${mitarbeiter.length}</div><div class="hero-stat-label">Mitarbeiter</div></div>
+    `;
+  }
+}
+
+// --- FOTO UTILS ---
+function simpleHash(str){
+  let h=0,step=Math.max(1,Math.floor(str.length/500));
+  for(let i=0;i<str.length;i+=step) h=(Math.imul(31,h)+str.charCodeAt(i))|0;
+  return h.toString();
+}
+
+function getExifData(file) {
+  // Timeout after 500ms to prevent blocking
+  return Promise.race([
+    new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onerror = () => resolve({});
+      reader.onload = e => {
+        try {
+          const buf = e.target.result;
+          const view = new DataView(buf);
+          if (view.getUint16(0) !== 0xFFD8) { resolve({}); return; }
+          let offset = 2;
+          let safety = 0;
+          while (offset < buf.byteLength && safety++ < 50) {
+            if (offset + 2 > buf.byteLength) break;
+            const marker = view.getUint16(offset);
+            offset += 2;
+            if (offset + 2 > buf.byteLength) break;
+            if (marker === 0xFFE1) {
+              const exifLen = view.getUint16(offset);
+              if (offset + 2 + exifLen > buf.byteLength) break;
+              const exifBuf = buf.slice(offset + 2, offset + exifLen);
+              const exifView = new DataView(exifBuf);
+              if (exifView.byteLength >= 4 && exifView.getUint32(0) === 0x45786966) {
+                try { resolve(parseExif(exifView)); } catch(e) { resolve({}); }
+                return;
+              }
+            }
+            if (offset + 2 > buf.byteLength) break;
+            const segLen = view.getUint16(offset);
+            if (segLen < 2) break;
+            offset += segLen;
+          }
+        } catch(e) {}
+        resolve({});
+      };
+      reader.readAsArrayBuffer(file.slice(0, 65536)); // Only read first 64KB
+    }),
+    new Promise(resolve => setTimeout(() => resolve({}), 500))
+  ]);
+}
+
+function parseExif(view) {
+  try {
+    const littleEndian = view.getUint16(6) === 0x4949;
+    const ifdOffset = view.getUint32(10, littleEndian) + 6;
+    const numEntries = view.getUint16(ifdOffset, littleEndian);
+    let result = {};
+    for (let i = 0; i < numEntries; i++) {
+      const entryOffset = ifdOffset + 2 + i * 12;
+      const tag = view.getUint16(entryOffset, littleEndian);
+      if (tag === 0x9003 || tag === 0x0132) { // DateTimeOriginal or DateTime
+        const offset = view.getUint32(entryOffset + 8, littleEndian) + 6;
+        let str = '';
+        for (let j = 0; j < 19; j++) str += String.fromCharCode(view.getUint8(offset + j));
+        result.timestamp = str;
+      }
+      if (tag === 0x8825) { // GPS IFD
+        const gpsOffset = view.getUint32(entryOffset + 8, littleEndian) + 6;
+        result.gpsOffset = gpsOffset;
+      }
+    }
+    if (result.gpsOffset) {
+      result.gps = parseGPS(view, result.gpsOffset, littleEndian);
+    }
+    return result;
+  } catch(e) { return {}; }
+}
+
+function parseGPS(view, offset, le) {
+  try {
+    const numEntries = view.getUint16(offset, le);
+    let lat=null, lon=null, latRef='N', lonRef='E';
+    for (let i = 0; i < numEntries; i++) {
+      const e = offset + 2 + i * 12;
+      const tag = view.getUint16(e, le);
+      const valOffset = view.getUint32(e + 8, le) + 6;
+      if (tag === 1) latRef = String.fromCharCode(view.getUint8(e + 8));
+      if (tag === 3) lonRef = String.fromCharCode(view.getUint8(e + 8));
+      if (tag === 2) lat = readRational3(view, valOffset, le);
+      if (tag === 4) lon = readRational3(view, valOffset, le);
+    }
+    if (lat !== null && lon !== null) {
+      const latD = lat[0] + lat[1]/60 + lat[2]/3600;
+      const lonD = lon[0] + lon[1]/60 + lon[2]/3600;
+      return { lat: latRef==='S'?-latD:latD, lon: lonRef==='W'?-lonD:lonD };
+    }
+  } catch(e) {}
+  return null;
+}
+
+function readRational3(view, offset, le) {
+  return [
+    view.getUint32(offset, le) / view.getUint32(offset+4, le),
+    view.getUint32(offset+8, le) / view.getUint32(offset+12, le),
+    view.getUint32(offset+16, le) / view.getUint32(offset+20, le)
+  ];
+}
+
+function compressToBlob(file, maxW=900, quality=0.78) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w=img.width, h=img.height;
+        if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(blob => resolve({blob, previewUrl: canvas.toDataURL('image/jpeg', 0.5)}), 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function getAllStoredHashes(){
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(SB_URL+'/rest/v1/einreichungen?select=foto_hashes', {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY},
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const all = await res.json();
+    const hashes = new Set();
+    (all||[]).forEach(e => (e.foto_hashes||[]).forEach(h => hashes.add(h)));
+    return hashes;
+  } catch(e) {
+    return new Set(); // If it fails, skip duplicate check
+  }
+}
+
+// detect warnings for a set of photos
+function detectWarnings(photos) {
+  const warnings = [];
+  // Too fast: more than 10 photos in under 30 seconds
+  const withTs = photos.filter(p => p.timestamp);
+  if (withTs.length >= 10) {
+    const times = withTs.map(p => new Date(p.timestamp.replace(/:/,'-').replace(/:/, '-').replace(' ','T'))).filter(d => !isNaN(d));
+    if (times.length >= 10) {
+      times.sort((a,b)=>a-b);
+      const span = (times[times.length-1] - times[0]) / 1000;
+      if (span < 30) warnings.push('⚡ ' + withTs.length + ' Fotos in unter 30 Sekunden aufgenommen');
+    }
+  }
+  // No GPS on any photo
+  const withGPS = photos.filter(p => p.gps);
+  if (photos.length > 0 && withGPS.length === 0) warnings.push('📍 Keine GPS-Daten in den Fotos');
+  // 5+ photos from exact same GPS point
+  if (withGPS.length >= 5) {
+    const rounded = withGPS.map(p => `${Math.round(p.gps.lat*1000)},${Math.round(p.gps.lon*1000)}`);
+    const freq = {};
+    rounded.forEach(r => freq[r] = (freq[r]||0)+1);
+    const maxSame = Math.max(...Object.values(freq));
+    if (maxSame >= 5) warnings.push('📌 ' + maxSame + ' Fotos vom exakt gleichen GPS-Standort');
+  }
+  // Old photos (taken more than 24h before upload)
+  const now = Date.now();
+  photos.forEach(p => {
+    if (p.timestamp) {
+      const ts = new Date(p.timestamp.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+      if (!isNaN(ts) && (now - ts) > 86400000 * 1) warnings.push('🕐 Mindestens ein Foto älter als 24 Stunden');
+    }
+  });
+  return [...new Set(warnings)];
+}
+
+// --- FILE INPUT ---
+async function processFiles(files) {
+  if(!files.length) return;
+  const BATCH = 5; // process 5 at a time to avoid RAM overload
+  const pe=document.getElementById('processing');pe.textContent='⏳ Fotos werden verarbeitet...';pe.style.height='auto';
+  document.getElementById('submit-btn').disabled=true;
+
+  const storedHashes = await getAllStoredHashes();
+  const pendingHashes = new Set(pendingPhotos.map(p=>p.hash));
+  let dups=0, processed=0;
+
+  for(let i=0; i<files.length; i+=BATCH){
+    const batch = files.slice(i, i+BATCH);
+    for(const f of batch){
+      try {
+        const exif = await getExifData(f);
+        const {blob, previewUrl} = await compressToBlob(f);
+        const hash = simpleHash(previewUrl);
+        if(storedHashes.has(hash)||pendingHashes.has(hash)){dups++;continue;}
+        // Always store previewUrl as base64 - blob can be GC'd
+        pendingPhotos.push({
+          dataUrl: previewUrl, // use this for submission
+          previewUrl: previewUrl,
+          gps: exif.gps||null,
+          timestamp: exif.timestamp||null,
+          hash, name: f.name
+        });
+        pendingHashes.add(hash);
+      } catch(e) { console.warn('Foto übersprungen:', e); }
+      processed++;
+    }
+    // Update counter after each batch
+    updateFotoCounter(processed, files.length);
+    renderFotoGrid();
+    // Yield to browser to prevent freezing
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  document.getElementById('processing').style.height='0';
+  document.getElementById('submit-btn').disabled=false;
+
+  if(dups>0){
+    const e=document.getElementById('upload-error');
+    e.textContent='⚠ '+dups+' Foto'+(dups!==1?'s wurden':' wurde')+' bereits eingereicht und nicht hinzugefügt.';
+    e.style.display='block';
+    setTimeout(()=>e.style.display='none',6000);
+  }
+  updateFotoCounter();
+}
+
+document.getElementById('file-input').addEventListener('change', async function(){
+  const files = Array.from(this.files);
+  this.value='';
+  await processFiles(files);
+});
+
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',async e=>{
+  e.preventDefault();dz.classList.remove('drag-over');
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+  await processFiles(files);
+});
+
+function renderFotoGrid(){
+  const n=pendingPhotos.length;
+  if(n>30){
+    // For large batches just show count, no thumbnails (saves RAM)
+    document.getElementById('foto-grid').innerHTML=`<div style="font-size:13px;color:var(--muted);padding:8px 0;">${n} Fotos bereit zum Hochladen</div>`;
+  } else {
+    document.getElementById('foto-grid').innerHTML=pendingPhotos.map((p,i)=>{
+      const hasWarn=!p.gps;
+      return `<div class="foto-thumb">
+        <img src="${p.previewUrl}" alt="">
+        <div class="remove" onclick="removePhoto(${i})">✕</div>
+        ${hasWarn?'<div class="warn-dot" title="Kein GPS">!</div>':''}
+      </div>`;
+    }).join('');
+  }
+  updateFotoCounter();
+}
+function removePhoto(idx){pendingPhotos.splice(idx,1);renderFotoGrid();}
+function updateFotoCounter(done, total){
+  const n=pendingPhotos.length;
+  const counterEl=document.getElementById('foto-counter');
+  if(done!==undefined && total!==undefined && done<total){
+    counterEl.textContent=`⏳ ${done}/${total} verarbeitet...`;
+  } else {
+    counterEl.textContent=n>0?`${n} Foto${n!==1?'s':''} ausgewählt`:'';
+  }
+}
+
+// --- SUBMIT ---
+async function submitEintrag(){
+  const name=document.getElementById('ma-name').value;
+  const eventId=parseInt(document.getElementById('ma-event').value);
+  const errEl=document.getElementById('upload-error');
+  const sucEl=document.getElementById('upload-success');
+  errEl.style.display='none'; sucEl.style.display='none';
+  if(!name){errEl.textContent='❌ Bitte Mitarbeiter wählen.';errEl.style.display='block';return;}
+  if(!eventId){errEl.textContent='❌ Bitte Veranstaltung wählen.';errEl.style.display='block';return;}
+  if(pendingPhotos.length===0){errEl.textContent='❌ Bitte mindestens ein Foto hochladen.';errEl.style.display='block';return;}
+  document.getElementById('submit-btn').disabled=true;
+  document.getElementById('progress-wrap').style.display='block';
+
+  const ev=events.find(e=>e.id===eventId);
+  const warnings=detectWarnings(pendingPhotos);
+  const progressBar=document.getElementById('progress-bar');
+  const CHUNK=20; // max 20 Fotos pro DB-Eintrag
+  const zeit=new Date().toLocaleString('de-DE');
+  let totalSaved=0;
+
+  for(let b=0; b<pendingPhotos.length; b+=CHUNK){
+    const batch=pendingPhotos.slice(b, b+CHUNK);
+    const fotos=[], fotoHashes=[], fotoMeta=[];
+
+    for(let i=0; i<batch.length; i++){
+      const p=batch[i];
+      const base64 = p.dataUrl; // already base64
+      fotos.push(base64);
+      fotoHashes.push(p.hash||'');
+      fotoMeta.push({gps:p.gps||null, timestamp:p.timestamp||null});
+      progressBar.style.width=Math.round(((b+i+1)/pendingPhotos.length)*100)+'%';
+    }
+
+    const result=await db('einreichungen','POST',{
+      mitarbeiter:name, event_id:eventId, event_name:ev.name,
+      anzahl:fotos.length, fotos:fotos, foto_hashes:fotoHashes,
+      foto_meta:fotoMeta, warnings:b===0?warnings:[], zeit
+    });
+
+    if(result&&!result.error) totalSaved+=fotos.length;
+    else { console.error('Batch fehler:', result); }
+  }
+
+  document.getElementById('submit-btn').disabled=false;
+  document.getElementById('progress-wrap').style.display='none';
+  progressBar.style.width='0%';
+
+  if(totalSaved===0){errEl.textContent='❌ Fehler beim Speichern. Bitte nochmal versuchen.';errEl.style.display='block';return;}
+
+  sucEl.innerHTML=`✅ Erfolgreich eingereicht!<br><br><strong>Mitarbeiter:</strong> ${name}<br><strong>Veranstaltung:</strong> ${ev.name}<br><strong>Plakate:</strong> ${totalSaved}`;
+  sucEl.style.display='block';
+  document.getElementById('ma-name').value='';
+  document.getElementById('ma-event').value='';
+  pendingPhotos=[]; renderFotoGrid();
+}
+
+// --- ADMIN LADEN ---
+async function loadAdmin(){
+  events=await db('events?select=*&order=created_at.asc')||[];
+  mitarbeiter=await db('mitarbeiter?select=*&order=name.asc')||[];
+  entries=await db('einreichungen?select=id,mitarbeiter,event_id,event_name,anzahl,foto_hashes,foto_meta,warnings,zeit,created_at&order=created_at.desc')||[];
+  zahlungen=await db('zahlungen?select=*&order=created_at.desc')||[];
+  renderAdmin();
+}
+
+async function loadFotosForEntry(id){
+  const result = await db(`einreichungen?select=fotos&id=eq.${id}`);
+  return (result&&result[0])?result[0].fotos||[]:[];
+}
+
+// --- EVENTS ---
+async function addEvent(){
+  const name=document.getElementById('new-event-name').value.trim();
+  const bestand=parseInt(document.getElementById('new-event-bestand').value);
+  const errEl=document.getElementById('event-error');
+  errEl.style.display='none';
+  if(!name){errEl.textContent='❌ Bitte Name eingeben.';errEl.style.display='block';return;}
+  if(isNaN(bestand)||bestand<1){errEl.textContent='❌ Bitte Anfangsbestand eingeben.';errEl.style.display='block';return;}
+  await db('events','POST',{name,bestand});
+  document.getElementById('new-event-name').value='';
+  document.getElementById('new-event-bestand').value='';
+  await loadAdmin(); await loadUploadDropdowns();
+}
+
+function openEditEvent(id){
+  editEventId=id;
+  const ev=events.find(e=>e.id===id);
+  document.getElementById('edit-event-name').value=ev.name;
+  document.getElementById('edit-event-bestand').value=ev.bestand;
+  document.getElementById('modal-event-edit').classList.add('open');
+}
+
+async function saveEventEdit(){
+  const name=document.getElementById('edit-event-name').value.trim();
+  const bestand=parseInt(document.getElementById('edit-event-bestand').value);
+  if(!name||isNaN(bestand)||bestand<1)return;
+  await db(`events?id=eq.${editEventId}`,'PATCH',{name,bestand});
+  await db(`einreichungen?event_id=eq.${editEventId}`,'PATCH',{event_name:name});
+  await loadAdmin(); await loadUploadDropdowns(); closeModal('event-edit');
+}
+
+async function deleteEvent(id){
+  const ev=events.find(e=>e.id===id);
+  if(!confirm(`Event "${ev.name}" löschen?`))return;
+  const ents=entries.filter(e=>e.event_id===id);
+  for(const e of ents) for(const url of (e.fotos||[])) await deleteFotoStorage(url);
+  await db(`einreichungen?event_id=eq.${id}`,'DELETE');
+  await db(`events?id=eq.${id}`,'DELETE');
+  await loadAdmin(); await loadUploadDropdowns();
+}
+
+// --- MITARBEITER ---
+async function addMitarbeiter(){
+  const name=document.getElementById('new-ma-name').value.trim();
+  if(!name)return;
+  await db('mitarbeiter','POST',{name});
+  document.getElementById('new-ma-name').value='';
+  await loadAdmin(); await loadUploadDropdowns();
+}
+
+async function deleteMitarbeiter(name){
+  if(!confirm(`Mitarbeiter "${name}" entfernen?`))return;
+  await db(`mitarbeiter?name=eq.${encodeURIComponent(name)}`,'DELETE');
+  await loadAdmin(); await loadUploadDropdowns();
+}
+
+// --- EINREICHUNGEN ---
+function openEditEntry(id){
+  editEntryId=id;
+  const e=entries.find(e=>e.id===id);
+  document.getElementById('edit-ma').innerHTML=mitarbeiter.map(m=>`<option value="${m.name}" ${m.name===e.mitarbeiter?'selected':''}>${m.name}</option>`).join('');
+  document.getElementById('edit-event').innerHTML=events.map(ev=>`<option value="${ev.id}" ${ev.id===e.event_id?'selected':''}>${ev.name}</option>`).join('');
+  document.getElementById('modal-edit').classList.add('open');
+}
+
+async function saveEdit(){
+  const ma=document.getElementById('edit-ma').value;
+  const evId=parseInt(document.getElementById('edit-event').value);
+  const ev=events.find(e=>e.id===evId);
+  await db(`einreichungen?id=eq.${editEntryId}`,'PATCH',{mitarbeiter:ma,event_id:evId,event_name:ev.name});
+  await loadAdmin(); closeModal('edit');
+}
+
+async function deleteEntry(id){
+  if(!confirm('Eintrag löschen?'))return;
+  const e=entries.find(e=>e.id===id);
+  for(const url of (e.fotos||[])) await deleteFotoStorage(url);
+  await db(`einreichungen?id=eq.${id}`,'DELETE');
+  await loadAdmin();
+}
+
+// --- AUSZAHLUNG ---
+function openZahlung(maName){
+  zahlungMa=maName;
+  const maEntries=entries.filter(e=>e.mitarbeiter===maName);
+  const total=maEntries.reduce((s,e)=>s+e.anzahl,0);
+  const bezahlt=zahlungen.filter(z=>z.mitarbeiter===maName);
+  const bezahltTotal=bezahlt.reduce((s,z)=>s+z.betrag,0);
+  document.getElementById('zahlung-title').textContent='Auszahlung – '+maName;
+  document.getElementById('zahlung-info').innerHTML=`Plakate gesamt: <strong>${total}</strong><br>Bereits bezahlt: <strong>€${bezahltTotal.toFixed(2)}</strong>`;
+  document.getElementById('zahlung-betrag').value='';
+  document.getElementById('zahlung-notiz').value='';
+  document.getElementById('modal-zahlung').classList.add('open');
+}
+
+async function saveZahlung(){
+  const betrag=parseFloat(document.getElementById('zahlung-betrag').value);
+  const notiz=document.getElementById('zahlung-notiz').value.trim();
+  if(isNaN(betrag)||betrag<=0){alert('Bitte gültigen Betrag eingeben.');return;}
+  await db('zahlungen','POST',{mitarbeiter:zahlungMa,betrag,notiz,datum:new Date().toLocaleString('de-DE')});
+  await loadAdmin(); closeModal('zahlung');
+}
+
+// --- MITARBEITER FOTO MODAL ---
+async function openMaModal(name){
+  const maEntries=entries.filter(e=>e.mitarbeiter===name);
+  document.getElementById('modal-ma-title').textContent=name+' – alle Fotos';
+  document.getElementById('modal-ma-content').innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">⏳ Fotos werden geladen...</div>';
+  document.getElementById('modal-ma').classList.add('open');
+
+  // Load fotos for all entries of this mitarbeiter
+  const byEvent={};
+  for(const e of maEntries){
+    const fotos = await loadFotosForEntry(e.id);
+    if(!byEvent[e.event_name]) byEvent[e.event_name]=[];
+    fotos.forEach((url,fi)=>{
+      const meta=(e.foto_meta||[])[fi]||{};
+      byEvent[e.event_name].push({url,gps:meta.gps,timestamp:meta.timestamp,entryId:e.id,fotoIdx:fi});
+    });
+  }
+
+  const total=Object.values(byEvent).reduce((s,v)=>s+v.length,0);
+  let html=`<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">${total} Plakat${total!==1?'e':''} insgesamt</div>`;
+  if(total===0){html+='<div class="empty-state">Keine Fotos</div>';}
+  else{
+    Object.entries(byEvent).forEach(([evName,photos])=>{
+      html+=`<div style="margin-bottom:20px;"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px;">${evName} (${photos.length})</div><div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+      photos.forEach(({url,gps,timestamp,entryId,fotoIdx},idx)=>{
+        const hasWarn=!gps;
+        html+=`<div style="position:relative;width:80px;">
+          <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="openGalleryFromMaLoaded(${idx})">
+          ${hasWarn?'<div style="position:absolute;top:-4px;left:-4px;background:var(--warn);border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;">!</div>':''}
+          <div onclick="deleteFotoFromEntry(${entryId},${fotoIdx},'${name}')" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</div>
+          ${gps?`<a class="gps-link" href="https://maps.google.com/?q=${gps.lat},${gps.lon}" target="_blank" style="display:block;text-align:center;font-size:9px;margin-top:2px;">📍 Karte</a>`:'<div style="font-size:9px;color:var(--warn);text-align:center;margin-top:2px;">kein GPS</div>'}
+          ${timestamp?`<div style="font-size:9px;color:var(--muted);text-align:center;">${timestamp.slice(0,10)}</div>`:''}
+        </div>`;
+      });
+      html+='</div></div>';
+    });
+    // Store all photos for gallery
+    window._maGalleryPhotos = Object.values(byEvent).flat();
+  }
+  document.getElementById('modal-ma-content').innerHTML=html;
+}
+
+function openGalleryFromMaLoaded(idx){
+  galleryPhotos=(window._maGalleryPhotos||[]).map(p=>({url:p.url,gps:p.gps,timestamp:p.timestamp}));
+  galleryIdx=idx;
+  showGallery();
+}
+
+async function deleteFotoFromEntry(entryId, fotoIdx, maName){
+  if(!confirm('Dieses Foto löschen?'))return;
+  const entry=entries.find(e=>e.id===entryId);
+  if(!entry)return;
+  const url=(entry.fotos||[])[fotoIdx];
+  if(url) await deleteFotoStorage(url);
+  const newFotos=[...(entry.fotos||[])];
+  const newHashes=[...(entry.foto_hashes||[])];
+  const newMeta=[...(entry.foto_meta||[])];
+  newFotos.splice(fotoIdx,1);
+  newHashes.splice(fotoIdx,1);
+  newMeta.splice(fotoIdx,1);
+  if(newFotos.length===0){
+    await db(`einreichungen?id=eq.${entryId}`,'DELETE');
+  } else {
+    await db(`einreichungen?id=eq.${entryId}`,'PATCH',{fotos:newFotos,foto_hashes:newHashes,foto_meta:newMeta,anzahl:newFotos.length});
+  }
+  await loadAdmin(); openMaModal(maName);
+}
+
+// --- GALERIE ---
+let galleryByEvent={};
+function openGalleryFromMa(maName, evName, startIdx){
+  const maEntries=entries.filter(e=>e.mitarbeiter===maName&&e.event_name===evName);
+  galleryPhotos=[];
+  maEntries.forEach(e=>{
+    (e.fotos||[]).forEach((url,fi)=>{
+      const meta=(e.foto_meta||[])[fi]||{};
+      galleryPhotos.push({url,gps:meta.gps,timestamp:meta.timestamp});
+    });
+  });
+  galleryIdx=startIdx;
+  showGallery();
+}
+
+function openGalleryFromEntry(entryId, startIdx){
+  const e=entries.find(e=>e.id===entryId);
+  if(!e)return;
+  galleryPhotos=(e.fotos||[]).map((url,fi)=>{
+    const meta=(e.foto_meta||[])[fi]||{};
+    return {url,gps:meta.gps,timestamp:meta.timestamp};
+  });
+  galleryIdx=startIdx;
+  showGallery();
+}
+
+function showGallery(){
+  if(!galleryPhotos.length)return;
+  const p=galleryPhotos[galleryIdx];
+  document.getElementById('gallery-img').src=p.url;
+  document.getElementById('gallery-counter').textContent=`${galleryIdx+1} / ${galleryPhotos.length}`;
+  document.getElementById('gallery-info').textContent='';
+  let meta='';
+  if(p.timestamp) meta+=`📅 ${p.timestamp}`;
+  if(p.gps && p.gps.lat != null && p.gps.lon != null) {
+    meta+=(meta?' · ':'')+`📍 <a class="gps-link" href="https://maps.google.com/?q=${p.gps.lat},${p.gps.lon}" target="_blank">${Number(p.gps.lat).toFixed(5)}, ${Number(p.gps.lon).toFixed(5)}</a>`;
+  }
+  document.getElementById('gallery-meta').innerHTML=meta||'Keine Metadaten';
+  document.getElementById('gallery-warn').textContent=(!p.gps||p.gps.lat==null)?'⚠ Kein GPS-Standort in diesem Foto':'';
+  document.getElementById('gallery').classList.add('open');
+}
+
+function galleryNext(){if(galleryIdx<galleryPhotos.length-1){galleryIdx++;showGallery();}}
+function galleryPrev(){if(galleryIdx>0){galleryIdx--;showGallery();}}
+function closeGallery(){document.getElementById('gallery').classList.remove('open');}
+
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('gallery').classList.contains('open'))return;
+  if(e.key==='ArrowRight')galleryNext();
+  if(e.key==='ArrowLeft')galleryPrev();
+  if(e.key==='Escape')closeGallery();
+});
+
+// --- RENDER ---
+function renderAdmin(){
+  document.getElementById('ma-list').innerHTML=mitarbeiter.map(m=>`
+    <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px;">
+      ${m.name}<span onclick="deleteMitarbeiter('${m.name}')" style="cursor:pointer;color:var(--danger);font-size:11px;">✕</span>
+    </span>`).join('');
+
+  document.getElementById('event-count').textContent=events.length;
+  const grid=document.getElementById('event-grid');
+  if(!events.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:8px;">Noch keine Events</div>';}
+  else{
+    grid.innerHTML=events.map(ev=>{
+      const eingereicht=entries.filter(e=>e.event_id===ev.id).reduce((s,e)=>s+e.anzahl,0);
+      const rest=ev.bestand-eingereicht;
+      const pct=Math.min(100,Math.round((eingereicht/ev.bestand)*100));
+      return `<div class="event-card">
+        <div class="ename">${ev.name}</div>
+        <div class="erow"><span class="el">Anfangsbestand</span><span class="ev">${ev.bestand}</span></div>
+        <div class="erow"><span class="el">Eingereicht</span><span class="ev">${eingereicht}</span></div>
+        <div class="erow"><span class="el">Restbestand</span><span class="ev ${rest<0?'d':'s'}">${rest}</span></div>
+        <div class="eprogress"><div class="eprogress-bar" style="width:${pct}%"></div></div>
+        <div class="eactions">
+          <button onclick="openEditEvent(${ev.id})">✏ Bearbeiten</button>
+          <button class="del" onclick="deleteEvent(${ev.id})">🗑 Löschen</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Group entries by mitarbeiter + event + zeit (same submission = same time)
+  const grouped = [];
+  const seen = {};
+  entries.forEach(e => {
+    const key = e.mitarbeiter + '|' + e.event_id + '|' + e.zeit;
+    if(seen[key] !== undefined){
+      grouped[seen[key]].anzahl += e.anzahl;
+      grouped[seen[key]].fotos = [...(grouped[seen[key]].fotos||[]), ...(e.fotos||[])];
+      grouped[seen[key]].ids.push(e.id);
+      if((e.warnings||[]).length) grouped[seen[key]].warnings = [...(grouped[seen[key]].warnings||[]), ...(e.warnings||[])];
+    } else {
+      seen[key] = grouped.length;
+      grouped.push({...e, fotos:[...(e.fotos||[])], ids:[e.id], warnings:[...(e.warnings||[])]});
+    }
+  });
+
+  document.getElementById('entry-count').textContent=grouped.length;
+  const eTable=document.getElementById('entries-table');
+  if(!grouped.length){eTable.innerHTML='<tr><td colspan="7"><div class="empty-state">Noch keine Einreichungen</div></td></tr>';}
+  else{
+    eTable.innerHTML=grouped.map(e=>{
+      const fotoCount=e.anzahl||0;
+      const idsAttr=e.ids.join(',');
+      const thumbs=`<button class="act-btn" onclick="loadAndShowFotosById('${idsAttr}')">📷 ${fotoCount} ansehen</button>`;
+      const more='';
+      const uniqueWarnings=[...new Set(e.warnings||[])];
+      const warnHtml=uniqueWarnings.length>0?`<span class="warn-tag" style="cursor:pointer" onclick="showWarnings(${JSON.stringify(uniqueWarnings).replace(/'/g,'&apos;')})">⚠ ${uniqueWarnings.length} ansehen</span>`:'<span style="color:var(--success);font-size:11px;">✓ OK</span>';
+      return `<tr>
+        <td>${e.mitarbeiter}</td>
+        <td><span class="tag">${e.event_name}</span></td>
+        <td style="font-weight:600">${e.anzahl}</td>
+        <td>${thumbs}${more}</td>
+        <td>${warnHtml}</td>
+        <td style="color:var(--muted);white-space:nowrap">${e.zeit}</td>
+        <td><button class="act-btn del" onclick="deleteGroupedEntry(${JSON.stringify(e.ids)})">🗑</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  const maMap={};
+  entries.forEach(e=>{if(!maMap[e.mitarbeiter])maMap[e.mitarbeiter]=0;maMap[e.mitarbeiter]+=e.anzahl;});
+  const maNames=Object.keys(maMap);
+  document.getElementById('ma-stat-count').textContent=maNames.length;
+  const maTable=document.getElementById('ma-table');
+  if(!maNames.length){maTable.innerHTML='<tr><td colspan="5"><div class="empty-state">Noch keine Einreichungen</div></td></tr>';}
+  else{
+    maTable.innerHTML=maNames.sort((a,b)=>maMap[b]-maMap[a]).map(name=>{
+      const initials=name.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+      const bezahlt=zahlungen.filter(z=>z.mitarbeiter===name);
+      const bezahltTotal=bezahlt.reduce((s,z)=>s+z.betrag,0);
+      const letzteZahlung=bezahlt.length?bezahlt[0].datum:'—';
+      return `<tr>
+        <td style="cursor:pointer" onclick="openMaModal('${name}')"><div class="ma-row"><div class="avatar">${initials}</div>${name} <span style="font-size:10px;color:var(--muted);margin-left:4px;">📷</span></div></td>
+        <td style="font-weight:600">${maMap[name]} <button class="act-btn del" style="margin-left:6px;font-size:10px;" onclick="deleteAllEntriesForMa(event,'${name}')">🗑</button></td>
+        <td>${bezahlt.length>0?`<span class="paid-badge">✓ Bezahlt</span>`:'<span class="unpaid-badge">Ausstehend</span>'}</td>
+        <td style="color:var(--success)">€${bezahltTotal.toFixed(2)} <span style="color:var(--muted);font-size:11px;">${letzteZahlung!=='—'?'· '+letzteZahlung:''}</span>${bezahlt.length>0?`<button class="act-btn del" style="margin-left:6px;font-size:10px;" onclick="deleteZahlungForMa(event,'${name}')">✕</button>`:''}</td>
+        <td><button class="act-btn" onclick="openZahlung('${name}')">💶 Auszahlen</button></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+
+
+async function loadAndShowFotosById(idsStr){
+  const ids = idsStr.split(',').map(Number);
+  await loadAndShowFotos(ids);
+}
+
+async function loadAndShowFotos(ids, maName, evName, zeit){
+  galleryPhotos=[];
+  for(const id of ids){
+    const fotos = await loadFotosForEntry(id);
+    const entry = entries.find(e=>e.id===id);
+    fotos.forEach((url,fi)=>{
+      const meta=((entry&&entry.foto_meta)||[])[fi]||{};
+      galleryPhotos.push({url,gps:meta.gps,timestamp:meta.timestamp});
+    });
+  }
+  galleryIdx=0;
+  showGallery();
+}
+
+function openGalleryFromGroup(maName, evName, zeit, startIdx){
+  const grouped = entries.filter(e => e.mitarbeiter===maName && e.event_name===evName && e.zeit===zeit);
+  galleryPhotos=[];
+  grouped.forEach(e=>{
+    (e.fotos||[]).forEach((url,fi)=>{
+      const meta=(e.foto_meta||[])[fi]||{};
+      galleryPhotos.push({url,gps:meta.gps,timestamp:meta.timestamp});
+    });
+  });
+  galleryIdx=startIdx;
+  showGallery();
+}
+
+async function deleteGroupedEntry(ids){
+  if(!confirm('Einreichung löschen?'))return;
+  for(const id of ids){
+    const e=entries.find(e=>e.id===id);
+    if(e) for(const url of (e.fotos||[])) if(url.startsWith('http')) await deleteFotoStorage(url);
+    await db(`einreichungen?id=eq.${id}`,'DELETE');
+  }
+  await loadAdmin();
+}
+
+
+function showWarnings(warnings){
+  alert('Warnungen:\n\n' + warnings.join('\n'));
+}
+
+function closeModal(n){document.getElementById('modal-'+n).classList.remove('open');}
+
+
+async function deleteAllEntriesForMa(evt, name){
+  evt.stopPropagation();
+  if(!confirm(`Alle Einreichungen von "${name}" löschen? Die Plakatanzahl wird auf 0 gesetzt.`))return;
+  const maEntries=entries.filter(e=>e.mitarbeiter===name);
+  for(const e of maEntries){
+    for(const url of (e.fotos||[])) await deleteFotoStorage(url);
+    await db(`einreichungen?id=eq.${e.id}`,'DELETE');
+  }
+  await loadAdmin();
+}
+
+async function deleteZahlungForMa(evt, name){
+  evt.stopPropagation();
+  if(!confirm(`Alle Zahlungen für "${name}" löschen?`))return;
+  await db(`zahlungen?mitarbeiter=eq.${encodeURIComponent(name)}`,'DELETE');
+  await loadAdmin();
+}
+
+// --- EXCEL ---
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  const evData=[['Veranstaltung','Anfangsbestand','Eingereicht','Restbestand']];
+  events.forEach(ev=>{const e=entries.filter(e=>e.event_id===ev.id).reduce((s,e)=>s+e.anzahl,0);evData.push([ev.name,ev.bestand,e,ev.bestand-e]);});
+  const ws1=XLSX.utils.aoa_to_sheet(evData);ws1['!cols']=[{wch:35},{wch:15},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Events');
+  const eData=[['Mitarbeiter','Veranstaltung','Plakate','Warnungen','Uhrzeit']];
+  entries.forEach(e=>eData.push([e.mitarbeiter,e.event_name,e.anzahl,(e.warnings||[]).join('; '),e.zeit]));
+  const ws2=XLSX.utils.aoa_to_sheet(eData);ws2['!cols']=[{wch:25},{wch:35},{wch:10},{wch:50},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Einreichungen');
+  const maMap={};entries.forEach(e=>{if(!maMap[e.mitarbeiter])maMap[e.mitarbeiter]=0;maMap[e.mitarbeiter]+=e.anzahl;});
+  const maData=[['Mitarbeiter','Plakate','Bezahlt (€)']];
+  Object.entries(maMap).sort((a,b)=>b[1]-a[1]).forEach(([n,c])=>{const b=zahlungen.filter(z=>z.mitarbeiter===n).reduce((s,z)=>s+z.betrag,0);maData.push([n,c,b.toFixed(2)]);});
+  const ws3=XLSX.utils.aoa_to_sheet(maData);ws3['!cols']=[{wch:25},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Pro Mitarbeiter');
+  XLSX.writeFile(wb,`PlakatTrack_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+async function resetData(){
+  if(!confirm('Wirklich ALLE Daten löschen?'))return;
+  for(const e of entries) for(const url of (e.fotos||[])) await deleteFotoStorage(url);
+  await db('einreichungen?id=gt.0','DELETE');
+  await db('events?id=gt.0','DELETE');
+  await db('mitarbeiter?id=gt.0','DELETE');
+  await db('zahlungen?id=gt.0','DELETE');
+  await loadAdmin(); await loadUploadDropdowns();
+}
+
+// Init
+const procEl = document.getElementById('processing');
+procEl.style.cssText = 'display:none !important';
+procEl.hidden = true;
+document.getElementById('submit-btn').disabled=false;
+loadUploadDropdowns();
+</script>
+</body>
+</html>
