@@ -347,7 +347,10 @@
 <div class="page" id="page-admin">
   <div class="admin-wrap">
 
-    <div class="section-title">Events <span class="badge" id="event-count">0</span></div>
+    <div class="toolbar" style="margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">Events <span class="badge" id="event-count">0</span></div>
+      <button class="export-btn" onclick="openSammelrechnung()" style="color:var(--accent);border-color:var(--accent);">📄 Sammelrechnung</button>
+    </div>
     <div class="event-grid" id="event-grid"><div class="empty-state" style="grid-column:1/-1;background:var(--surface);border:1px solid var(--border);border-radius:8px;">Lädt...</div></div>
 
     <div class="toolbar">
@@ -1171,6 +1174,7 @@ function renderAdmin(){
         </div>
         <div class="eactions">
           <button onclick="openEditEvent(${ev.id})">✏ Bearbeiten</button>
+          <button onclick="openRechnungEvent(${ev.id})">📄 Rechnung</button>
           <button class="del" onclick="deleteEvent(${ev.id})">🗑 Löschen</button>
         </div>
       </div>`;
@@ -1235,7 +1239,6 @@ function renderAdmin(){
         <td style="color:var(--success)">€${bezahltTotal.toFixed(2)} <span style="color:var(--muted);font-size:11px;">${letzteZahlung!=='—'?'· '+letzteZahlung:''}</span>${bezahlt.length>0?`<button class="act-btn del" style="margin-left:6px;font-size:10px;" onclick="deleteZahlungForMa(event,'${name}')">✕</button>`:''}</td>
         <td>
           <button class="act-btn" onclick="openZahlung('${name}')">💶 Auszahlen</button>
-          <button class="act-btn" onclick="openRechnung('${name}')" style="margin-top:4px;">📄 Rechnung</button>
           <button class="act-btn" onclick="openHistory('${name}')" style="margin-top:4px;">📋 Historie</button>
         </td>
       </tr>`;
@@ -1352,30 +1355,29 @@ loadUploadDropdowns();
 
 <!-- MODAL Rechnung -->
 <div class="modal-overlay" id="modal-rechnung">
-  <div class="modal" style="max-width:700px;position:relative">
+  <div class="modal" style="max-width:720px;position:relative">
     <button class="modal-close" onclick="closeModal('rechnung')">✕</button>
-    <h3>Rechnung erstellen</h3>
+    <h3 id="rech-title">Rechnung erstellen</h3>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       <div>
-        <label class="field-label">Rechnungsadresse</label>
-        <textarea id="rech-adresse" rows="4" placeholder="z.B.&#10;Max Mustermann&#10;Musterstr. 1&#10;48163 Münster" style="font-size:13px;"></textarea>
-      </div>
-      <div>
-        <label class="field-label">Mitarbeiter</label>
-        <select id="rech-ma" onchange="updateRechnungPreview()"></select>
-        <label class="field-label" style="margin-top:8px;">Betrag pro Plakat (€)</label>
-        <input type="number" id="rech-preis" min="0" step="0.01" value="0.50" oninput="updateRechnungPreview()">
-        <label class="field-label">Anzahl Plakate</label>
-        <input type="number" id="rech-anzahl" min="1" oninput="updateRechnungPreview()">
+        <label class="field-label">Empfänger / Rechnungsadresse</label>
+        <textarea id="rech-adresse" rows="4" placeholder="Firma GmbH&#10;Musterstr. 1&#10;48163 Münster&#10;info@firma.de" style="font-size:13px;"></textarea>
         <label class="field-label">Rechnungsnummer</label>
         <input type="text" id="rech-nr" placeholder="z.B. 2026-001">
+        <label class="field-label">Empfänger E-Mail</label>
+        <input type="text" id="rech-email" placeholder="info@firma.de">
+      </div>
+      <div>
+        <label class="field-label">Betrag pro Plakat (€)</label>
+        <input type="number" id="rech-preis" min="0" step="0.01" value="0.50" oninput="updateRechnungPreview()">
+        <label class="field-label">Positionen</label>
+        <div id="rech-positionen" style="max-height:180px;overflow-y:auto;"></div>
       </div>
     </div>
 
-    <!-- Preview -->
-    <div id="rech-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:16px;font-size:12px;margin-bottom:16px;">
-      <div style="text-align:center;color:var(--muted)">Vorschau wird geladen...</div>
+    <div id="rech-preview" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:16px;font-size:12px;margin-bottom:16px;color:#222;">
+      <div style="text-align:center;color:#999">Vorschau wird geladen...</div>
     </div>
 
     <div class="modal-actions">
@@ -1404,6 +1406,24 @@ loadUploadDropdowns();
       <iframe id="karte-frame" style="width:100%;height:100%;border:none;" src=""></iframe>
     </div>
     <div id="karte-list" style="margin-top:12px;font-size:12px;color:var(--muted);max-height:150px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- MODAL Sammelrechnung -->
+<div class="modal-overlay" id="modal-sammel">
+  <div class="modal" style="max-width:600px;position:relative">
+    <button class="modal-close" onclick="closeModal('sammel')">✕</button>
+    <h3>Sammelrechnung</h3>
+    <label class="field-label">Firma wählen</label>
+    <select id="sammel-firma" onchange="updateSammelEvents()">
+      <option value="">— Bitte wählen —</option>
+    </select>
+    <label class="field-label">Events auswählen</label>
+    <div id="sammel-events" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:14px;"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="erstelleSammelrechnung()" style="flex:1">📄 Rechnung erstellen</button>
+      <button class="btn secondary" onclick="closeModal('sammel')" style="flex:1">Abbrechen</button>
+    </div>
   </div>
 </div>
 </body>
