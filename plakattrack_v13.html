@@ -488,6 +488,7 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const BUCKET = 'Fotos';
 
 let events=[], mitarbeiter=[], entries=[], zahlungen=[];
+let firmen=[];
 let pendingPhotos=[]; // {blob, previewUrl, gps, timestamp, hash}
 let processingCount=0;
 let editEntryId=null, editEventId=null, zahlungMa=null;
@@ -892,7 +893,7 @@ async function submitEintrag(){
 
 // --- ADMIN LADEN ---
 async function loadAdmin(){
-  firmen=await db('firmen?select=*&order=name.asc')||[];
+  if(!firmen.length) firmen=await db('firmen?select=*&order=name.asc')||[];
   events=await db('events?select=*&order=created_at.asc')||[];
   // Enrich events with firma name
   events.forEach(ev => {
@@ -1417,7 +1418,8 @@ async function deleteZahlungById(id, maName) {
 }
 
 // --- RECHNUNG PRO EVENT ---
-function openRechnungEvent(eventId) {
+async function openRechnungEvent(eventId) {
+  if(!firmen.length) firmen=await db('firmen?select=*&order=name.asc')||[];
   const ev = events.find(e => e.id === eventId);
   if (!ev) return;
   document.getElementById('rech-title').textContent = 'Rechnung – ' + ev.name;
