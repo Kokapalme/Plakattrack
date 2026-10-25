@@ -1520,7 +1520,7 @@ function updateRechnungPreview() {
   let rows = '', totalNetto = 0;
   positionen.forEach((p, i) => {
     const n = p.anzahl * preis; totalNetto += n;
-    rows += `<tr><td style="padding:6px;border:1px solid #ddd;">${i+1}</td><td style="padding:6px;border:1px solid #ddd;">Plakatierung – ${p.label}</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${preis.toFixed(2).replace('.',',')} €</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${p.anzahl}</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${n.toFixed(2).replace('.',',')} EUR</td></tr>`;
+    rows += `<tr><td style="padding:6px;border:1px solid #ddd;">${i+1}</td><td style="padding:6px;border:1px solid #ddd;">${p.label}</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${preis.toFixed(2).replace('.',',')} €</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${p.anzahl}</td><td style="padding:6px;text-align:right;border:1px solid #ddd;">${n.toFixed(2).replace('.',',')} EUR</td></tr>`;
   });
   const mwst = totalNetto * 0.19, brutto = totalNetto + mwst;
   const el = document.getElementById('rech-preview');
